@@ -1,0 +1,301 @@
+// SUNDA Payout & Unit Loan Management System — Prisma schema
+// Dev DB: SQLite (file:./dev.db, resolved relative to this schema dir -> prisma/dev.db)
+// Prod: set DATABASE_URL to a PostgreSQL connection string and run `prisma migrate deploy`.
+// Money is stored as BigInt (integer minor units). For UGX (no minor unit) 1 = 1 UGX.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id               String     @id @default(cuid())
+  username         String     @unique
+  passwordHash     String
+  role             String     @default("VIEWER") // ADMIN | ACCOUNTANT | APPROVER | VIEWER
+  status           String     @default("ACTIVE") // ACTIVE | INACTIVE
+  mfaSecret        String?
+  lastLogin        DateTime?
+  createdAt        DateTime   @default(now())
+  updatedAt        DateTime   @updatedAt
+  approvalsMade    Approval[] @relation("Checker")
+  approvalsRequested Approval[] @relation("Maker")
+  auditLogs        AuditLog[]
+}
+
+model Client {
+  id              String    @id @default(cuid())
+  clientId        String    @unique // business id (e.g. from main server)
+  name            String
+  category        String? // ASP | PRIVATE_WATER_VENDOR | PRIVATE_OPERATOR | SUNDA_DIRECT | COMMUNITY | DONOR
+  paymentFrequency String? // MONTHLY | QUARTERLY
+  transferMethod  String    @default("MOBILE_MONEY") // MOBILE_MONEY | BANK
+  payoutPhone     String? // msisdn for disbursement
+  bankAccount     String?
+  reportFormat    String?
+  status          String    @default("ACTIVE")
+  registeredDate  DateTime  @default(now())
+  firstPayoutDate DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  contracts       Contract[]
+  sources         Source[]
+  collections     Collection[]
+  payoutCalcs     PayoutCalc[]
+  payoutRequests  PayoutRequest[]
+  manualPayments  ManualPayment[]
+}
+
+model Contract {
+  id                  String    @id @default(cuid())
+  contractId          String    @unique
+  clientId            String
+  client              Client    @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  tin                 String? // per-contract TIN for EFRIS
+  legalName           String?
+  activeFrom          DateTime?
+  activeTo            DateTime?
+  commissionPct       Float     @default(0) // e.g. 0.20 = 20%
+  monthlyFeeFixed     BigInt    @default(0) // fixed subscription (integer minor units)
+  monthlyFeePct       Float     @default(0) // percentage of collection
+  maintenanceFeePct    Float     @default(0) // percentage of collection
+  bankChargePerPayout BigInt    @default(0)
+  initialFeeInstallment BigInt @default(0) // amount paid down per cycle
+  initialFee          BigInt    @default(0)
+  initialFeeBalance   BigInt    @default(0) // running balance
+  monthlyFeeBalance   BigInt    @default(0) // running balance / carried shortage
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+  sources             Source[]
+  unitLoan            UnitLoan?
+  payoutCalcs         PayoutCalc[]
+  manualPayments      ManualPayment[]
+  payoutRequests      PayoutRequest[]
+}
+
+model Source {
+  id         String    @id @default(cuid())
+  sourceId   String    @unique // from SUNDA main server
+  name       String
+  clientId   String
+  client     Client    @relation(fields: [clientId], references: [id])
+  contractId String?
+  contract   Contract? @relation(fields: [contractId], references: [id])
+  status     String    @default("ACTIVE")
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+  collections Collection[]
+}
+
+model UnitLoan {
+  id                  String     @id @default(cuid())
+  contractId          String     @unique
+  contract            Contract   @relation(fields: [contractId], references: [id], onDelete: Cascade)
+  unitType            String?
+  totalPurchaseAmount BigInt     @default(0)
+  paymentPeriod       Int? // months
+  monthlyRepayAmount  BigInt     @default(0)
+  initialPaymentPaid  BigInt     @default(0)
+  balance             BigInt     @default(0) // outstanding
+  status              String     @default("ACTIVE") // ACTIVE | CLEARED | OVERDUE | ON_HOLD
+  dueDate             DateTime?
+  createdAt           DateTime   @default(now())
+  updatedAt           DateTime   @updatedAt
+  entries             LoanEntry[]
+}
+
+model LoanEntry {
+  id          String    @id @default(cuid())
+  loanId      String
+  loan        UnitLoan  @relation(fields: [loanId], references: [id], onDelete: Cascade)
+  calcId      String? // reference to the payout calc that created a repayment
+  kind        String // disbursement | repayment | adjustment | reversal
+  amount      BigInt    @default(0)
+  balanceAfter BigInt   @default(0)
+  note        String?
+  reversesId String?
+  createdAt   DateTime  @default(now())
+}
+
+model Collection {
+  id             String    @id @default(cuid())
+  sourceId       String
+  source         Source    @relation(fields: [sourceId], references: [id])
+  clientId       String
+  client         Client    @relation(fields: [clientId], references: [id])
+  sourceOfRecord String // yo | server
+  extRef         String?
+  amount         BigInt    @default(0)
+  litres         Float?
+  occurredAt     DateTime
+  raw            String? // JSON
+  importBatchId  String?
+  createdAt      DateTime  @default(now())
+  yoMatches      ReconMatch[] @relation("YoMatch")
+  serverMatches   ReconMatch[] @relation("ServerMatch")
+}
+
+model ReconMatch {
+  id                 String      @id @default(cuid())
+  yoCollectionId     String?
+  yoCollection       Collection?  @relation("YoMatch", fields: [yoCollectionId], references: [id])
+  serverCollectionId String?
+  serverCollection   Collection?  @relation("ServerMatch", fields: [serverCollectionId], references: [id])
+  type               String // matched | mismatch | yo_only | server_only | duplicate
+  diff               BigInt      @default(0)
+  status             String      @default("open") // open | resolved | escalated
+  resolution         String?
+  resolvedAmount     BigInt?
+  note               String?
+  resolvedBy         String?
+  resolvedAt         DateTime?
+  createdAt          DateTime    @default(now())
+}
+
+model PayoutCycle {
+  id        String       @id @default(cuid())
+  period    String       @unique // "YYYY-MM"
+  status    String       @default("draft") // draft | calculating | ready | awaiting_approval | approved | paid
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+  calcs     PayoutCalc[]
+}
+
+model PayoutCalc {
+  id             String      @id @default(cuid())
+  cycleId        String
+  cycle          PayoutCycle @relation(fields: [cycleId], references: [id], onDelete: Cascade)
+  clientId       String
+  client         Client      @relation(fields: [clientId], references: [id])
+  contractId     String
+  contract       Contract    @relation(fields: [contractId], references: [id])
+  period         String
+  gross          BigInt      @default(0)
+  commission     BigInt      @default(0) // Sunda Commission (= sales for EFRIS)
+  initialFee     BigInt      @default(0)
+  monthlyFee     BigInt      @default(0)
+  maintenanceFee BigInt      @default(0)
+  bankCharge     BigInt      @default(0)
+  loanRepay      BigInt      @default(0)
+  other          BigInt      @default(0)
+  shortage       BigInt      @default(0)
+  net            BigInt      @default(0)
+  monthlyFeeCovered Boolean?  @default(true)
+  flags          String? // JSON array of flag strings
+  ruleSnapshot   String? // JSON of contract terms used
+  calcVersion    Int         @default(1)
+  status         String      @default("draft") // draft | calculated | submitted | approved | paid
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
+}
+
+model Approval {
+  id        String    @id @default(cuid())
+  type      String // CYCLE | LOAN_ADJUSTMENT | RULE | DISBURSEMENT | REQUEST | EFRIS
+  objectId  String?
+  makerId   String
+  maker     User      @relation("Maker", fields: [makerId], references: [id])
+  checkerId String?
+  checker   User?     @relation("Checker", fields: [checkerId], references: [id])
+  status    String    @default("pending") // pending | approved | rejected
+  reason    String?
+  createdAt DateTime  @default(now())
+  resolvedAt DateTime?
+}
+
+model PayoutRequest {
+  id             String   @id @default(cuid())
+  clientId       String
+  client         Client   @relation(fields: [clientId], references: [id])
+  contractId     String?
+  contract       Contract? @relation(fields: [contractId], references: [id])
+  requestedAmount BigInt  @default(0)
+  period         String
+  status         String   @default("pending") // pending | approved | rejected | transferred
+  reason         String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+}
+
+model ManualPayment {
+  id         String    @id @default(cuid())
+  clientId   String
+  client     Client    @relation(fields: [clientId], references: [id])
+  contractId String?
+  contract   Contract? @relation(fields: [contractId], references: [id])
+  purpose    String // INITIAL | UNIT | MONTHLY | OTHER
+  amount     BigInt    @default(0)
+  date       DateTime  @default(now())
+  receivedBy String?
+  method     String? // CASH | BANK | MOBILE_MONEY
+  note       String?
+  createdAt  DateTime  @default(now())
+}
+
+model Disbursement {
+  id             String    @id @default(cuid())
+  batchId        String?
+  calcId        String?
+  idempotencyKey String   @unique
+  amount        BigInt    @default(0)
+  msisdn        String?
+  channel       String    @default("MOBILE_MONEY") // MOBILE_MONEY | BANK
+  yoRef         String?
+  status        String    @default("queued") // queued | sending | pending | success | failed | rejected | unknown
+  attempts      Int       @default(0)
+  lastError     String?
+  sentAt        DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+}
+
+model EfrisSubmission {
+  id         String    @id @default(cuid())
+  recordType String // COMMISSION | LOAN_REPAYMENT
+  recordId   String?
+  payload    String? // JSON
+  response   String? // JSON
+  efrisRef   String?
+  status     String    @default("ready") // ready | submitted | approved | rejected
+  attempts   Int       @default(0)
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+}
+
+model RuleVersion {
+  id         String    @id @default(cuid())
+  kind       String // commission | loan | deduction
+  params     String // JSON
+  validFrom  DateTime
+  validTo    DateTime?
+  status     String    @default("draft") // draft | active | retired
+  approvedBy String?
+  createdAt  DateTime  @default(now())
+}
+
+model Report {
+  id        String   @id @default(cuid())
+  category  String // e.g. WATER_COLLECTION_MAINTENANCE | GOVERNMENT | PRIVATE_VENDOR | ASP | VENDOR_3MONTH
+  recipient String?
+  period    String
+  format    String   @default("EXCEL") // EXCEL | PDF | CSV
+  createdBy String?
+  createdAt DateTime @default(now())
+}
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  actorId    String?
+  actor      User?    @relation(fields: [actorId], references: [id])
+  action     String
+  objectType String?
+  objectId   String?
+  before      String? // JSON
+  after       String? // JSON
+  ip         String?
+  at         DateTime @default(now())
+}

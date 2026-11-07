@@ -1,0 +1,27 @@
+@import "tailwindcss";
+
+:root {
+  --navy:  #0B4F7C;
+  --navy-light: #E6F1FA;
+  --bg: #F3F6FA;
+  --card: #ffffff;
+  --border: #E2E8F0;
+  --text: #1E293B;
+  --muted: #64748B;
+
+  --success-bg: #DCFCE7; --success: #15803D;
+  --warn-bg:    #FEF3C7; --warn:    #B45309;
+  --error-bg:   #FEE2E2; --error:   #B91C1C;
+  --info-bg:    #DBEAFE; --info:    #1E40AF;
+  --neutral-bg: #E2E8F0; --neutral: #334155;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-geist-sans, "Segoe UI", Arial, sans-serif);
+  font-size: 14px;
+}
+
+/* tabular numerals for all money figures */
+.tabnum { font-variant-numeric: tabular-nums; }
