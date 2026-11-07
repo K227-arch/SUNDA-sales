@@ -57,11 +57,11 @@ export function Kpi({
 }) {
   return (
     <div className={`rounded-lg border p-3 shadow-sm sm:p-4 ${accent ? "border-[#0B4F7C] bg-[#E6F1FA]" : "border-[#E2E8F0] bg-white"}`}>
-      <p className="text-xs text-slate-500 leading-tight">{label}</p>
-      <p className={`mt-1 text-lg font-semibold tabnum sm:text-xl ${accent ? "text-[#0B4F7C]" : "text-slate-900"}`}>
+      <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400 leading-tight">{label}</p>
+      <p className={`mt-1.5 text-xl font-bold tabnum leading-none sm:text-2xl ${accent ? "text-[#0B4F7C]" : "text-slate-900"}`}>
         {value}
       </p>
-      {sub && <p className="mt-0.5 text-xs text-slate-400">{sub}</p>}
+      {sub && <p className="mt-1 text-[11px] text-slate-400">{sub}</p>}
     </div>
   );
 }
@@ -76,7 +76,7 @@ export function Card({
     <div className="rounded-lg border border-[#E2E8F0] bg-white shadow-sm">
       {(title || action) && (
         <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[#E2E8F0] px-4 py-3">
-          {title && <h2 className="font-semibold text-slate-800">{title}</h2>}
+          {title && <h2 className="text-[13px] font-semibold tracking-tight text-slate-800">{title}</h2>}
           {action && <div className="shrink-0">{action}</div>}
         </div>
       )}
@@ -99,7 +99,7 @@ export function TableWrap({ children }: { children: ReactNode }) {
 export function Th({ ch, r }: { ch: ReactNode; r?: boolean }) {
   return (
     <th
-      className={`border-b border-[#E2E8F0] bg-slate-50 px-3 py-2.5 text-xs font-semibold uppercase tracking-wide text-slate-500 whitespace-nowrap ${r ? "text-right" : "text-left"}`}
+      className={`border-b border-[#E2E8F0] bg-slate-50 px-3 py-2.5 text-[11px] font-bold uppercase tracking-[0.07em] text-slate-500 whitespace-nowrap ${r ? "text-right" : "text-left"}`}
     >
       {ch}
     </th>
@@ -107,13 +107,13 @@ export function Th({ ch, r }: { ch: ReactNode; r?: boolean }) {
 }
 export function Td({ ch, r, cls = "" }: { ch: ReactNode; r?: boolean; cls?: string }) {
   return (
-    <td className={`border-b border-slate-100 px-3 py-2.5 ${r ? "text-right tabnum" : ""} ${cls}`}>
+    <td className={`border-b border-slate-100 px-3 py-2.5 text-[13px] text-slate-700 ${r ? "text-right tabnum" : ""} ${cls}`}>
       {ch}
     </td>
   );
 }
 export function Empty({ msg }: { msg: string }) {
-  return <p className="py-8 text-center text-sm text-slate-400">{msg}</p>;
+  return <p className="py-10 text-center text-[13px] text-slate-400">{msg}</p>;
 }
 
 // ─── Page header ──────────────────────────────────────────────────────────────
@@ -125,8 +125,8 @@ export function PageHeader({
   return (
     <div className="flex flex-wrap items-start justify-between gap-3">
       <div className="min-w-0">
-        <h1 className="text-xl font-semibold text-slate-900 sm:text-2xl">{title}</h1>
-        {sub && <p className="mt-0.5 text-sm text-slate-500">{sub}</p>}
+        <h1 className="text-xl font-semibold tracking-tight text-slate-900 sm:text-2xl">{title}</h1>
+        {sub && <p className="mt-1 text-[13px] text-slate-500 leading-snug">{sub}</p>}
       </div>
       {action && <div className="shrink-0">{action}</div>}
     </div>

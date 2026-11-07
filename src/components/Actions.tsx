@@ -18,15 +18,15 @@ export function SeedButton() {
     setBusy(false);
   }
   return (
-    <div className="text-sm">
+    <div className="flex items-center gap-2 text-[13px]">
       {busy ? (
-        "Seeding..."
+        <span className="text-slate-400">Seeding…</span>
       ) : (
-        <button onClick={run} className="rounded-md bg-[#0B4F7C] px-3 py-1.5 text-white hover:bg-[#0a4570]">
+        <button onClick={run} className="rounded-md bg-[#0B4F7C] px-3 py-1.5 text-[13px] font-medium text-white hover:bg-[#083d61] transition-colors">
           Seed demo data
         </button>
       )}
-      {msg && <span className="ml-2 text-slate-500">{msg}</span>}
+      {msg && <span className="text-slate-500">{msg}</span>}
     </div>
   );
 }
@@ -49,15 +49,15 @@ export function CalculateButton({ period }: { period: string }) {
     setBusy(false);
   }
   return (
-    <div className="text-sm">
+    <div className="flex items-center gap-2 text-[13px]">
       {busy ? (
-        "Calculating..."
+        <span className="text-slate-400">Calculating…</span>
       ) : (
-        <button onClick={run} className="rounded-md bg-[#0B4F7C] px-3 py-1.5 text-white hover:bg-[#0a4570]">
+        <button onClick={run} className="rounded-md bg-[#0B4F7C] px-3 py-1.5 text-[13px] font-medium text-white hover:bg-[#083d61] transition-colors">
           Calculate {period}
         </button>
       )}
-      {msg && <span className="ml-2 text-slate-500">{msg}</span>}
+      {msg && <span className="text-slate-500">{msg}</span>}
     </div>
   );
 }
@@ -82,15 +82,15 @@ export function RunReconButton({ period }: { period: string }) {
     setBusy(false);
   }
   return (
-    <div className="text-sm">
+    <div className="flex items-center gap-2 text-[13px]">
       {busy ? (
-        "Running..."
+        <span className="text-slate-400">Running…</span>
       ) : (
-        <button onClick={run} className="rounded-md bg-[#0B4F7C] px-3 py-1.5 text-white hover:bg-[#0a4570]">
+        <button onClick={run} className="rounded-md bg-[#0B4F7C] px-3 py-1.5 text-[13px] font-medium text-white hover:bg-[#083d61] transition-colors">
           Run reconciliation
         </button>
       )}
-      {msg && <span className="ml-2 text-slate-500">{msg}</span>}
+      {msg && <span className="text-slate-500">{msg}</span>}
     </div>
   );
 }
